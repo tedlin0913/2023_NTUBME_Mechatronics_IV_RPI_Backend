@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  
+  ros2_node:
+
+    image: tedlinlab/ros2:${ARCH}-${ROS_DISTRO_NAME}-devel
+
+    volumes:
+      - ../ros_ws/src:/home/${USER_NAME}/ros_ws/src
+      - ../dds/fastdds.xml:/fastdds.xml
+
+    environment:
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds.xml
+      - ROS_DOMAIN_ID=0
+      - ROS_DISCOVERY_SERVER=${SERVER_IP}:11811
+
+    env_file:
+      - .env
+    
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+
+    init: true # enable tini
+
+    network_mode: host
+
+    pid: host

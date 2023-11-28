@@ -1,0 +1,21 @@
+repositories:
+
+  wheel_control:
+    type: git
+    url: https://github.com/tedlin0913/ROS2_RPI_Wheel_Control_Node.git
+    version: main
+
+  ultrasound_sensor:
+    type: git
+    url: https://github.com/tedlin0913/ROS2_RPI_Ultrasound_Sensor_Node.git
+    version: main
+
+  imu_sensor:
+    type: git
+    url: https://github.com/tedlin0913/ROS2_RPI_IMU_Sensor_Node.git
+    version: main
+
+  fan_control:
+    type: git
+    url: https://github.com/tedlin0913/ROS2_RPI_Fan_Control_Node.git
+    version: main

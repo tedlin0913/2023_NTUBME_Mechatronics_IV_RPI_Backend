@@ -1,0 +1,70 @@
+version: '3'
+
+services:
+
+  rtsp_server:
+
+    image: bluenviron/mediamtx:latest-ffmpeg
+
+    container_name: rtsp_server
+
+    volumes:
+      - ../rtsp/mediamtx.yml:/mediamtx.yml
+
+    devices:
+      - /dev/video0:/dev/video0
+
+    env_file:
+      - .env
+
+    init: true
+
+    network_mode: host
+
+  wheel_control:
+
+    extends:
+
+    file: common-services.yml
+
+    service: ros2_node
+
+    container_name: wheel_control
+
+    command: ros2 run wheel_control wheel_control_node
+
+  fan_control:
+
+    extends:
+
+    file: common-services.yml
+
+    service: ros2_node
+
+    container_name: fan_control
+
+    command: ros2 run fan_control fan_control_node
+
+  ultrasound_sensor:
+
+    extends:
+
+    file: common-services.yml
+
+    service: ros2_node
+
+    container_name: ultrasound_sensor
+
+    command: ros2 run ultrasound_sensor ultrasound_sensor_node
+
+  imu_sensor:
+
+    extends:
+
+    file: common-services.yml
+
+    service: ros2_node
+
+    container_name: imu_sensor
+
+    command: ros2 run imu_sensor imu_sensor_node
