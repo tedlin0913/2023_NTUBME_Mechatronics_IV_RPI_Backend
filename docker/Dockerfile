@@ -8,9 +8,6 @@ SHELL ["/bin/bash", "-c"]
 ARG USER
 ARG ROS_DISTRO
 
-ENV USER ${USER}
-ENV ROS_DISTRO ${ROS_DISTRO}
-
 RUN pip install pyFirmata2
 
 RUN apt-get update \
@@ -26,7 +23,7 @@ RUN apt-get update \
 WORKDIR /home/${USER}/ros_ws/src
 
 COPY ../ros_ws/src/.repo .
-RUN pip3 install flask opencv-python-headless vcstool
+RUN pip3 install pyFirmata2 vcstool
 RUN vcs import ./ < .repo
 
 WORKDIR /home/${USER}/ros_ws
