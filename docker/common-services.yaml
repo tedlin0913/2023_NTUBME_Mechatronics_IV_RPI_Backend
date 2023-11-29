@@ -25,6 +25,8 @@ services:
       - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds.xml
       - ROS_DOMAIN_ID=0
       - ROS_DISCOVERY_SERVER=${SERVER_IP}:11811
+      - USER=${USER_NAME}
+      - ROS_DISTRO=${ROS_DISTRO_NAME}
 
     env_file:
       - .env
