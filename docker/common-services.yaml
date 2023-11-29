@@ -2,7 +2,17 @@ version: '3'
 
 services:
   
-  ros2_node:
+  rpi_ros2_node:
+
+    platform: linux/arm64
+
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        - FROM_IMAGE=ros:${ROS_DISTRO_NAME}-ros-core
+        - USER=${USER_NAME}
+        - ROS_DISTRO=${ROS_DISTRO_NAME}
 
     image: tedlinlab/ros2:${ARCH}-${ROS_DISTRO_NAME}-devel
 
