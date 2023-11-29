@@ -8,6 +8,9 @@ SHELL ["/bin/bash", "-c"]
 ARG USER
 ARG ROS_DISTRO
 
+ENV USER ${USER}
+ENV ROS_DISTRO ${ROS_DISTRO}
+
 RUN pip install pyFirmata2
 
 RUN apt-get update \
