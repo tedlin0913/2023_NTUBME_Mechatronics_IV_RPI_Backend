@@ -10,16 +10,28 @@ ARG ROS_DISTRO
 
 RUN pip install pyFirmata2
 
-# Create the ros_ws workspace in the Docker image
+RUN apt-get update \
+    && apt-get install -y \
+    python3-pip \
+    git \  
+    python3-rosdep \
+    python3-colcon-common-extensions \
+    && apt-get autoclean \
+    && apt-get autoremove \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /home/${USER}/ros_ws/src
 
 COPY ../ros_ws/src/.repo .
-
+RUN pip3 install flask opencv-python-headless vcstool
 RUN vcs import ./ < .repo
+
+WORKDIR /home/${USER}/ros_ws
 
 # TODO: build source
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
-    && apt-get update \
+    && rosdep init \
+    && rosdep update \
     && rosdep install -i --from-path src --rosdistro ${ROS_DISTRO} -y \
     && colcon build --symlink-install \
     && apt-get autoclean \
