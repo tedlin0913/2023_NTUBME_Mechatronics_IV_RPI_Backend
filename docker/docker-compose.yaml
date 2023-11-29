@@ -9,7 +9,7 @@ services:
     container_name: rtsp_server
 
     volumes:
-      - ../rtsp/mediamtx.yml:/mediamtx.yml
+      - ../rtsp/mediamtx.yaml:/mediamtx.yaml
 
     devices:
       - /dev/video0:/dev/video0
@@ -25,7 +25,7 @@ services:
 
     extends:
 
-      file: common-services.yml
+      file: common-services.yaml
 
       service: rpi_ros2_node
 
@@ -37,7 +37,7 @@ services:
 
     extends:
 
-      file: common-services.yml
+      file: common-services.yaml
 
       service: rpi_ros2_node
 
@@ -49,7 +49,7 @@ services:
 
     extends:
 
-      file: common-services.yml
+      file: common-services.yaml
 
       service: rpi_ros2_node
 
@@ -61,7 +61,7 @@ services:
 
     extends:
 
-      file: common-services.yml
+      file: common-services.yaml
 
       service: rpi_ros2_node
 
