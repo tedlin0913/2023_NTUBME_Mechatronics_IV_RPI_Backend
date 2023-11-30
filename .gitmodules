@@ -1,0 +1,15 @@
+[submodule "fan_control"]
+path = ./ros_ws/src/fan_control
+url = ./ros_ws/src/fan_control
+
+[submodule "imu_sensor"]
+path = ./ros_ws/src/imu_sensor
+url = ./ros_ws/src/imu_sensor
+
+[submodule "ultrasound_sensor"]
+path = ./ros_ws/src/ultrasound_sensor
+url = ./ros_ws/src/ultrasound_sensor
+
+[submodule "wheel_control"]
+path = ./ros_ws/src/wheel_control
+url = ./ros_ws/src/wheel_control
