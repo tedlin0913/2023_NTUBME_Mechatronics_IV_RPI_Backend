@@ -11,8 +11,6 @@ ARG ROS_DISTRO
 ENV USER ${USER}
 ENV ROS_DISTRO ${ROS_DISTRO}
 
-RUN pip install pyFirmata2 gpiozero
-
 RUN apt-get update \
     && apt-get install -y \
     python3-pip \
@@ -23,10 +21,13 @@ RUN apt-get update \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/*
 
+# RUN pip install pyFirmata2 
+RUN pip3 install pyFirmata2 vcstool gpiozero
+
 WORKDIR /home/${USER}/ros_ws/src
 
 COPY ../ros_ws/src/.repo .
-RUN pip3 install pyFirmata2 vcstool
+
 RUN vcs import ./ < .repo
 
 WORKDIR /home/${USER}/ros_ws
@@ -43,7 +44,6 @@ RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
 
 RUN echo ". /opt/ros/${ROS_DISTRO}/setup.sh" >> ~/.bashrc \
     && echo ". /home/${USER}/ros_ws/install/setup.bash" >> ~/.bashrc
-
 
 COPY ../docker/entrypoint.sh /
 RUN chmod +x /entrypoint.sh
