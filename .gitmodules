@@ -12,4 +12,4 @@ url = ./ros_ws/src/ultrasound_sensor
 
 [submodule "wheel_control"]
 path = ./ros_ws/src/wheel_control
-url = ./ros_ws/src/wheel_control
+url = https://github.com/tedlin0913/ROS2_RPI_Wheel_Control_Node.git
