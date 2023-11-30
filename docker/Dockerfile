@@ -11,7 +11,7 @@ ARG ROS_DISTRO
 ENV USER ${USER}
 ENV ROS_DISTRO ${ROS_DISTRO}
 
-RUN pip install pyFirmata2
+RUN pip install pyFirmata2 gpiozero
 
 RUN apt-get update \
     && apt-get install -y \
