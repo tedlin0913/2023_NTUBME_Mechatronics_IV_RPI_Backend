@@ -17,12 +17,18 @@ RUN apt-get update \
     git \  
     python3-rosdep \
     python3-colcon-common-extensions \
+    python-smbus \
+    i2c-tools \
     && apt-get autoclean \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/*
 
-# RUN pip install pyFirmata2 
-RUN pip3 install pyFirmata2 vcstool gpiozero
+RUN pip3 install pyFirmata2 \
+    vcstool \
+    gpiozero \
+    rpi.gpio \
+    pigpio \
+    lgpiopip
 
 WORKDIR /home/${USER}/ros_ws/src
 
