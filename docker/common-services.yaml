@@ -33,6 +33,9 @@ services:
     
     devices:
       - /dev/ttyACM0:/dev/ttyACM0
+      - /dev/gpiomem:/dev/gpiomem
+
+    privileged: true
 
     init: true # enable tini
 
