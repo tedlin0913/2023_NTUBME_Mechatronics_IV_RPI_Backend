@@ -17,7 +17,6 @@ RUN apt-get update \
     git \  
     python3-rosdep \
     python3-colcon-common-extensions \
-    python-smbus \
     i2c-tools \
     && apt-get autoclean \
     && apt-get autoremove \
@@ -28,7 +27,7 @@ RUN pip3 install pyFirmata2 \
     gpiozero \
     rpi.gpio \
     pigpio \
-    lgpiopip
+    smbus2
 
 WORKDIR /home/${USER}/ros_ws/src
 
