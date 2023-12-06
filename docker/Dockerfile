@@ -33,6 +33,7 @@ WORKDIR /home/${USER}/ros_ws/src
 
 COPY ../ros_ws/src/.repo .
 
+# Be sure to git push first
 RUN vcs import ./ < .repo
 
 WORKDIR /home/${USER}/ros_ws
