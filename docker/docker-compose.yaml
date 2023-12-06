@@ -67,4 +67,4 @@ services:
 
     container_name: imu_sensor
 
-    command: ros2 launch imu_sensor imu_sensor_launch.py
+    command: ros2 run imu_sensor imu_sensor_node
