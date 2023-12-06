@@ -10,11 +10,11 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       args:
-        - FROM_IMAGE=ros:${ROS_DISTRO_NAME}-ros-core
+        - FROM_IMAGE=tedlinlab/ros2:${ARCH}-${ROS_DISTRO_NAME}-devel
         - USER=${USER_NAME}
         - ROS_DISTRO=${ROS_DISTRO_NAME}
 
-    image: tedlinlab/ros2:${ARCH}-${ROS_DISTRO_NAME}-devel
+    image: tedlinlab/ros2:${ARCH}-${ROS_DISTRO_NAME}-prod
 
     volumes:
       - ../ros_ws/src:/home/${USER_NAME}/ros_ws/src
@@ -31,9 +31,10 @@ services:
     env_file:
       - .env
     
-    devices:
-      - /dev/ttyACM0:/dev/ttyACM0
-      - /dev/gpiomem:/dev/gpiomem
+    # TODO: avoid using privileged mode
+    # devices:
+    #   - /dev/ttyACM0:/dev/ttyACM0
+    #   - /dev/gpiomem:/dev/gpiomem
 
     privileged: true
 

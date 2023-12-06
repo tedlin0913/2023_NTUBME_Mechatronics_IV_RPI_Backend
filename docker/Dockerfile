@@ -11,32 +11,14 @@ ARG ROS_DISTRO
 ENV USER ${USER}
 ENV ROS_DISTRO ${ROS_DISTRO}
 
-RUN apt-get update \
-    && apt-get install -y \
-    python3-pip \
-    git \  
-    python3-rosdep \
-    python3-colcon-common-extensions \
-    i2c-tools \
-    && apt-get autoclean \
-    && apt-get autoremove \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN pip3 install pyFirmata2 \
-    vcstool \
-    gpiozero \
-    rpi.gpio \
-    pigpio \
-    smbus2
-
 WORKDIR /home/${USER}/ros_ws/src
 
 COPY ../ros_ws/src/ .
 
 
-# Be sure to git push first
-# This is not a good idea as it
-RUN vcs import ./ < .repo
+# # Be sure to git push first
+# # This is not a good idea as it
+# RUN vcs import ./ < .repo
 
 WORKDIR /home/${USER}/ros_ws
 

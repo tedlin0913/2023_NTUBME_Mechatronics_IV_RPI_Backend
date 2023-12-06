@@ -1,0 +1,32 @@
+ARG FROM_IMAGE
+
+FROM $FROM_IMAGE
+
+SHELL ["/bin/bash", "-c"]
+
+# ARGs are scoped to the stage
+ARG USER
+ARG ROS_DISTRO
+
+ENV USER ${USER}
+ENV ROS_DISTRO ${ROS_DISTRO}
+
+RUN apt-get update \
+    && apt-get install -y \
+    python3-pip \
+    git \  
+    python3-rosdep \
+    python3-colcon-common-extensions \
+    i2c-tools \
+    && apt-get autoclean \
+    && apt-get autoremove \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install pyFirmata2 \
+    vcstool \
+    gpiozero \
+    rpi.gpio \
+    pigpio \
+    smbus2
+
+CMD ["bash"]
