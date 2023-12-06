@@ -55,7 +55,14 @@ services:
 
     container_name: ultrasound_sensor
 
-    command: ros2 run ultrasound_sensor ultrasound_sensor_node
+    command: ros2 launch bringup ultrasound_launch.py
+    # command: > 
+    #   ros2 run ultrasound_sensor ultrasound_sensor_node 
+    #   --ros-args 
+    #   --param trig:=18 
+    #   --param echo:=19 
+    #   --param topic_name:=sensor/us_front 
+    #   --param target_distance:=8.0
 
   imu_sensor:
 

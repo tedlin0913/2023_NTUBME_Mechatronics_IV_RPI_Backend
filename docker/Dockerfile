@@ -31,9 +31,11 @@ RUN pip3 install pyFirmata2 \
 
 WORKDIR /home/${USER}/ros_ws/src
 
-COPY ../ros_ws/src/.repo .
+COPY ../ros_ws/src/ .
+
 
 # Be sure to git push first
+# This is not a good idea as it
 RUN vcs import ./ < .repo
 
 WORKDIR /home/${USER}/ros_ws

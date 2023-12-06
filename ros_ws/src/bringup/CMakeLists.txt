@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(rpi_bringup)
+project(bringup)
 
 find_package(ament_cmake REQUIRED)
 
