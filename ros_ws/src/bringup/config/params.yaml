@@ -2,19 +2,22 @@ node_front:
   ros__parameters:
     trig: 18
     echo: 19
-    topic: sensor/us_front
-    target_distance: 8
+    topic_name: sensor/us_front
+    target_distance: 8.0
+    reliability: best_effort
 
 node_sidefront:
   ros__parameters:
     trig: 16
     echo: 17
-    topic: sensor/us_sidefront
-    target_distance: 8
+    topic_name: sensor/us_sidefront
+    target_distance: 8.0
+    reliability: best_effort
 
 node_siderear:
   ros__parameters:
     trig: 14
     echo: 15
-    topic: sensor/us_siderear
-    target_distance: 8
+    topic_name: sensor/us_siderear
+    target_distance: 8.0
+    reliability: best_effort

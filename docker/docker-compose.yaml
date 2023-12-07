@@ -21,6 +21,25 @@ services:
 
     network_mode: host
 
+
+  dicovery_server:
+
+    image: tedlinlab/ros2:${ARCH}-${ROS_DISTRO_NAME}-prod
+
+    container_name: ros2_discovery_server_1
+
+    command: fastdds discovery --server-id 1 -l 127.0.0.1 -p 11888
+
+    init: true # enable tini
+
+    env_file:
+      - .env
+
+    network_mode: host
+
+    pid: host
+
+
   wheel_control:
 
     extends:
@@ -31,7 +50,14 @@ services:
 
     container_name: wheel_control
 
-    command: ros2 run wheel_control wheel_control_node
+    command: ros2 run wheel_control wheel_control_node --ros-args -p reliability:=best_effort
+
+    environment:
+      - ROS_DISCOVERY_SERVER=${SERVER_IP}:11811;127.0.0.1:11888
+    
+    depends_on:
+      - dicovery_server
+
 
   fan_control:
 
@@ -43,7 +69,11 @@ services:
 
     container_name: fan_control
 
-    command: ros2 run fan_control fan_control_node
+    command: ros2 run fan_control fan_control_node --ros-args -p reliability:=best_effort
+
+    environment:
+      - ROS_DISCOVERY_SERVER=${SERVER_IP}:11811;127.0.0.1:11888
+
 
   ultrasound_sensor:
 
@@ -56,13 +86,10 @@ services:
     container_name: ultrasound_sensor
 
     command: ros2 launch bringup ultrasound_launch.py
-    # command: > 
-    #   ros2 run ultrasound_sensor ultrasound_sensor_node 
-    #   --ros-args 
-    #   --param trig:=18 
-    #   --param echo:=19 
-    #   --param topic_name:=sensor/us_front 
-    #   --param target_distance:=8.0
+
+    environment:
+      - ROS_DISCOVERY_SERVER=;127.0.0.1:11888
+
 
   imu_sensor:
 
@@ -74,4 +101,7 @@ services:
 
     container_name: imu_sensor
 
-    command: ros2 run imu_sensor imu_sensor_node
+    command: ros2 run imu_sensor imu_sensor_node --ros-args -p reliability:=best_effort
+
+    environment:
+      - ROS_DISCOVERY_SERVER=;127.0.0.1:11888
