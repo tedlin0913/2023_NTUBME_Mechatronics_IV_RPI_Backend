@@ -59,7 +59,7 @@ class UltrasoundNode(Node):
             self.topic,
             custom_qos_profile)
 
-        # self.timer = self.create_timer(0.5, self.timer_callback)
+        self.timer = self.create_timer(0.5, self.timer_callback)
         self.get_logger().info("Start ultrasound node")
 
     def start_measure(self):
@@ -104,7 +104,9 @@ class UltrasoundNode(Node):
         time.sleep(0.2)
 
     def timer_callback(self):
+        if self.buffer
         data = self.buffer.pop()
+        self.get_logger().info("Start angle thread")
         self.us_pub.publish(data)
         pass
 
