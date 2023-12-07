@@ -19,13 +19,15 @@ class UltrasoundNode(Node):
     def __init__(self):
         super().__init__('ultrasound_sensor_node')
 
+        # TODO: Maybe set this from UI
+        # TODO: Start and stop measure from UI
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('trig', 0),
-                ('echo', 0),
-                ('target_distance', 8),
-                ('topic_name', ''),
+                ('trig', Parameter.Type.INTEGER),
+                ('echo', Parameter.Type.INTEGER),
+                ('target_distance', Parameter.Type.DOUBLE),
+                ('topic_name', Parameter.Type.STRING),
             ]
         )
         self.trig_pin = self.get_parameter('trig').get_parameter_value().integer_value
@@ -36,6 +38,7 @@ class UltrasoundNode(Node):
         self.get_logger().info(f"Trig: {self.trig_pin} Echo: {self.echo_pin}")
         self.get_logger().info(f"Topic: {self.topic}")
         self.get_logger().info(f"Distance: {self.target_distance}")
+        
         # TODO: should be able to switch between best effort and reliable
         # Use best effort QoS reliability policy
         custom_qos_profile = qos_profile_sensor_data
@@ -49,11 +52,12 @@ class UltrasoundNode(Node):
         self.lock = Lock()
         self.event = Event()
         self.measure_thread = Thread(target=self.measure_task)
+        self.measure_thread.start()
 
-        # self.us1d_publisher = self.create_publisher(
-        #     Float32,
-        #     'sensor/us1d',
-        #     custom_qos_profile)
+        self.us_pub = self.create_publisher(
+            Float32,
+            self.topic,
+            custom_qos_profile)
 
         # self.timer = self.create_timer(0.5, self.timer_callback)
         self.get_logger().info("Start ultrasound node")
@@ -72,18 +76,25 @@ class UltrasoundNode(Node):
             self.get_logger().info("Stop angle thread")
 
     def measure_task(self):
+        trig_pin = self.board.digital[self.trig_pin]
+        echo_pin = self.board.digital[self.echo_pin]
         # Trigger pulse
+        pulse_start = 0
+        pulse_end = 0
+        pulse_duration = 0.0
+        distance = 0.0
+        
         with self.lock: 
-            self.board.digital[self.trig_pin].write(1)
+            trig_pin.write(1)
             time.sleep(0.00001)
-            self.board.digital[self.trig_pin].write(0)
+            trig_pin.write(0)
 
             # Wait for the pulse to be sent
-            while self.board.digital[self.echo_pin].read() == 0:
+            while echo_pin.read() == 0:
                 pulse_start = time.time()
 
             # Wait for the pulse to return
-            while self.board.digital[self.echo_pin].read() == 1:
+            while echo_pin.read() == 1:
                 pulse_end = time.time()
 
         # Calculate distance
@@ -93,7 +104,8 @@ class UltrasoundNode(Node):
         time.sleep(0.2)
 
     def timer_callback(self):
-        self.buffer.pop()
+        data = self.buffer.pop()
+        self.us_pub.publish(data)
         pass
 
 
