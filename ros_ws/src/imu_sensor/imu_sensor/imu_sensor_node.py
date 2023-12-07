@@ -62,7 +62,10 @@ class IMUSensorNode(Node):
         self.get_logger().info(f"FIFO count: {FIFO_count}")
 
         self.imu_data = Float32()
-        self.imu_publisher = self.create_publisher(Float32, 'sensor/imu', custom_qos_profile)
+        self.imu_publisher = self.create_publisher(
+            Float32, 
+            'sensor/imu', 
+            custom_qos_profile)
         self.timer = self.create_timer(0.1, self.pub_imu_data)
         self.get_logger().info("Initilize IMU Node")
         self.start_measure()
@@ -103,7 +106,9 @@ class IMUSensorNode(Node):
         self.get_logger().info(f"Finish stabilize.")
         FIFO_buffer = [0]*64
         count = 0
-        pre_rpy = None
+        
+        spike_filter = deque([0] * 3, maxlen=3)
+        
         cal_head_array = np.zeros(200)
         cal_tail_array = np.zeros(200)
         # yaw_offset = 0.0
@@ -135,17 +140,28 @@ class IMUSensorNode(Node):
                     
                     rpy = self.mpu.DMP_get_euler_roll_pitch_yaw(quat.get_normalized(), grav)
                     
-                    # R, P 有大變化表示有問題: 使用前一次的數據
-                    if (pre_rpy is not None):
-                        diff_r = rpy.x - pre_rpy.x
-                        diff_p = rpy.y - pre_rpy.y
-                        diff_y = rpy.z - pre_rpy.z
-                        if (abs(diff_r) > 10.0) or \
-                            (abs(diff_p) > 10.0) or \
-                            (abs(diff_y) > 20.0 and abs(diff_y) < 340):
-                            rpy = pre_rpy
-                    pre_rpy = rpy
+                    # thresholding to remove spikes
+                    spike_filter.append(rpy.z)
+                    if count > 2:
+                        diff_pre = abs(spike_filter[0] - spike_filter[1])
+                        diff_post = abs(spike_filter[2] - spike_filter[1])
+                        if (diff_pre > 5) and (diff_post > 5):
+                            rpy.z = spike_filter[2]
+                        else: 
+                            rpy.z = spike_filter[1]
+
+                    # if (pre_rpy is not None):
+                    #     diff_r = rpy.x - pre_rpy.x
+                    #     diff_p = rpy.y - pre_rpy.y
+                    #     diff_y = rpy.z - pre_rpy.z
+                    #     # pre_rpy = rpy
+                    #     if (abs(diff_r) > 10.0) or \
+                    #         (abs(diff_p) > 10.0) or \
+                    #         (abs(diff_y) > 50.0 and abs(diff_y) < 340):
+                    #         rpy = pre_rpy
+                    #         # Have to reset pre_rpy
                     
+                    spike_filter[1]
                     # Calibration
                     if count <= 1000: 
                         if count < 200:
@@ -166,14 +182,14 @@ class IMUSensorNode(Node):
                             # yaw_offset = avg_tail
                             # self.get_logger().info(f"Head: {most_head:.2f} Tail:{most_tail:.2f}")
                             
-                            cal_gain = abs(most_head - most_tail) / 800.0
+                            cal_gain = abs(most_head - most_tail) / 850.0
                             self.get_logger().info(f"Gain: {cal_gain}")
                     else: 
                         angle_compansate = cal_gain * count
                         rpyz_new = rpy.z + angle_compansate
                         # rpyz_new = self.normalize_yaw(rpyz_new, yaw_offset)
                         # self.get_logger().info(f"X:{grav.x} Y:{grav.y} Z:{grav.z}")
-                        self.get_logger().info(f"Y:{rpy.z:.2f} YC:{rpyz_new:.2f} C:{angle_compansate:.5f}")
+                        # self.get_logger().info(f"Y:{rpy.z:.2f} YC:{rpyz_new:.2f} C:{angle_compansate:.5f}")
                         self.buffer.append(rpyz_new)
                     
                     count += 1
