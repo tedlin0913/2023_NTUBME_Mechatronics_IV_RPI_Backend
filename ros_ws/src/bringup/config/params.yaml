@@ -1,23 +1,34 @@
 node_front:
   ros__parameters:
-    trig: 18
-    echo: 19
+    trig: 23
+    echo: 24
     topic_name: sensor/us_front
-    target_distance: 8.0
     reliability: best_effort
 
-node_sidefront:
+node_sidefront_right:
+  ros__parameters:
+    trig: 17
+    echo: 27
+    topic_name: sensor/us_sidefront_right
+    reliability: best_effort
+
+node_siderear_right:
+  ros__parameters:
+    trig: 5
+    echo: 6
+    topic_name: sensor/us_siderear_right
+    reliability: best_effort
+
+node_sidefront_left:
+  ros__parameters:
+    trig: 19
+    echo: 26
+    topic_name: sensor/us_sidefront_left
+    reliability: best_effort
+
+node_siderear_left:
   ros__parameters:
     trig: 16
-    echo: 17
-    topic_name: sensor/us_sidefront
-    target_distance: 8.0
-    reliability: best_effort
-
-node_siderear:
-  ros__parameters:
-    trig: 14
-    echo: 15
-    topic_name: sensor/us_siderear
-    target_distance: 8.0
+    echo: 20
+    topic_name: sensor/us_siderear_left
     reliability: best_effort

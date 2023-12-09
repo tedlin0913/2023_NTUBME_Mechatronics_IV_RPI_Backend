@@ -6,17 +6,20 @@ from rclpy.qos import qos_profile_sensor_data
 from rclpy.qos import QoSProfile
 from rclpy.qos import QoSReliabilityPolicy
 from rclpy.executors import MultiThreadedExecutor
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from std_msgs.msg import Float32
 
 from pyfirmata2 import Arduino
 from threading import Thread, Lock, Event
 from collections import deque
 import time
-# import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 
 
 class UltrasoundNode(Node):
-    def __init__(self):
+    def __init__(self, 
+                 sensor_cbgroup, 
+                 sender_cbgroup):
         super().__init__('ultrasound_sensor_node')
 
         # TODO: Maybe set this from UI
@@ -43,80 +46,143 @@ class UltrasoundNode(Node):
         # Use best effort QoS reliability policy
         custom_qos_profile = qos_profile_sensor_data
         
-        PORT =  Arduino.AUTODETECT
-        self.board = Arduino(PORT)
+        # PORT =  Arduino.AUTODETECT
+        # self.board = Arduino(PORT)
+
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
+
+        self.GPIO_TRIGGER = self.trig_pin
+        self.GPIO_ECHO    = self.echo_pin
+
+        GPIO.setup(self.GPIO_TRIGGER,GPIO.OUT)  # Trigger
+        GPIO.setup(self.GPIO_ECHO,GPIO.IN)      # Echo
+        
+        GPIO.output(self.GPIO_TRIGGER, False)
 
 
         self.buffer = deque(maxlen=10)
 
-        self.lock = Lock()
-        self.event = Event()
-        self.measure_thread = Thread(target=self.measure_task)
-        self.measure_thread.start()
+        # self.lock = Lock()
+        # self.event = Event()
+        # self.measure_thread = Thread(target=self.measure_task)
+        
 
         self.us_pub = self.create_publisher(
             Float32,
             self.topic,
             custom_qos_profile)
-
-        self.timer = self.create_timer(0.5, self.timer_callback)
+        self.sensor_timer = self.create_timer(0.4, 
+                                              self.sensor_callback, 
+                                              callback_group=sensor_cbgroup)
+        self.timer = self.create_timer(0.5, 
+                                       self.sender_callback,
+                                       callback_group=sender_cbgroup)
         self.get_logger().info("Start ultrasound node")
+        # self.measure_thread.start()
 
-    def start_measure(self):
-        if self.measure_thread.is_alive() is False:
-            self.event.clear()
-            self.measure_thread.start()
-            self.get_logger().info("Start angle thread")
-        else:
-            self.get_logger().warning("Thread is already running! stop it first.")
+    # def start_measure(self):
+    #     if self.measure_thread.is_alive() is False:
+    #         self.event.clear()
+    #         self.measure_thread.start()
+    #         self.get_logger().info("Start angle thread")
+    #     else:
+    #         self.get_logger().warning("Thread is already running! stop it first.")
     
-    def stop_measure(self):
-        if self.measure_thread.is_alive():
-            self.event.set()
-            self.get_logger().info("Stop angle thread")
+    # def stop_measure(self):
+    #     if self.measure_thread.is_alive():
+    #         self.event.set()
+    #         self.get_logger().info("Stop angle thread")
 
-    def measure_task(self):
-        trig_pin = self.board.digital[self.trig_pin]
-        echo_pin = self.board.digital[self.echo_pin]
-        # Trigger pulse
-        pulse_start = 0
-        pulse_end = 0
-        pulse_duration = 0.0
+    def sensor_callback(self):
+
+        pulse_start = 0.0
+        pulse_end = 0.0
+        elapsed = 0.0
         distance = 0.0
+        time_out_duration = 0.05
+        is_time_out = False
+        get_pulse = False
         
-        with self.lock: 
-            trig_pin.write(1)
-            time.sleep(0.00001)
-            trig_pin.write(0)
+        # while True:
+        GPIO.output(self.GPIO_TRIGGER, True)
+        time.sleep(0.00001)
+        GPIO.output(self.GPIO_TRIGGER, False)
+        
+        pulse_start = time.time()
+        pulse_end = time.time()
+        start_time = time.time()
+        while GPIO.input(self.GPIO_ECHO)==0:
+            pulse_start = time.time()
+            if time.time() - start_time > time_out_duration:
+                is_time_out = True
+                break
+            # self.get_logger().info(f"+++++")
+        if not is_time_out:
+            start_time = time.time()
+            while GPIO.input(self.GPIO_ECHO)==1:
+                pulse_end  = time.time()
+                get_pulse = True
+                if time.time() - start_time > time_out_duration:
+                    is_time_out = True
+                    break
+            # self.get_logger().info(f"=====")
+        # # pulse_end = time.time()
+        # while time.time() - start_time < time_out:
+        #     if GPIO.input(self.GPIO_ECHO)==0:
+        #         pulse_start = time.time()
+        #         break
+        
+        # start_time = time.time()
+        # while time.time() - start_time < time_out:
+        #     if GPIO.input(self.GPIO_ECHO)==1:
+        #         pulse_end = time.time()
+        #         get_pulse = True
+        #         break
+        if get_pulse:
+            elapsed = pulse_end - pulse_start
 
-            # Wait for the pulse to be sent
-            while echo_pin.read() == 0:
-                pulse_start = time.time()
+            # That was the distance there and back so halve the value
+            distance =  elapsed * 34300 / 2.0
+            # self.get_logger().info(f"Distance: {distance:.2f}")
+            self.buffer.append(distance)
+        # if get_pulse:
+        #     # Calculate pulse length
+        #     elapsed = pulse_end - pulse_start
 
-            # Wait for the pulse to return
-            while echo_pin.read() == 1:
-                pulse_end = time.time()
+        #     # That was the distance there and back so halve the value
+        #     distance =  elapsed * 34300 / 2.0
+        #     self.get_logger().info(f"Distance: {distance:.2f}")
+        #     self.buffer.append(distance)
+        
+        # time.sleep(0.5)
+    
+    # def echo_callback(self):
+        
+    #     pass
 
-        # Calculate distance
-        pulse_duration = pulse_end - pulse_start
-        distance = pulse_duration * 17150  # Speed of sound is 343 meters per second (17150 = 343 * 100 / 2)
-        self.buffer.append(distance)
-        time.sleep(0.2)
-
-    def timer_callback(self):
-        if self.buffer
-        data = self.buffer.pop()
-        self.get_logger().info("Start angle thread")
-        self.us_pub.publish(data)
-        pass
+    def sender_callback(self):
+        if self.buffer:
+            distance = self.buffer.pop()
+            # self.get_logger().info(f"Distance: {distance}")
+            us_data = Float32()
+            us_data.data = distance
+            
+            self.us_pub.publish(us_data)
+        else: 
+            # self.get_logger().info(f"Out of Data.")
+            pass
 
 
 def main(args=None):
     rclpy.init(args=args)
 
     try:
+        sensor_cbgroup = MutuallyExclusiveCallbackGroup()
+        sender_cbgroup = MutuallyExclusiveCallbackGroup()
         executor = MultiThreadedExecutor()
-        node = UltrasoundNode()
+        node = UltrasoundNode(sensor_cbgroup=sensor_cbgroup, 
+                              sender_cbgroup=sender_cbgroup)
         executor.add_node(node)
         try:
             executor.spin()
