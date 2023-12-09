@@ -14,23 +14,46 @@ from collections import deque
 import time
 
 from .sensor_subscirber import SensorSubscriber
-from .move_thread import *
 
-# class PIDController:
-#     def __init__(self, kp, ki, kd):
-#         self.kp = kp
-#         self.ki = ki
-#         self.kd = kd
-#         self.prev_error = 0
-#         self.integral = 0
+class PIDController:
+    def __init__(self, kp, ki, kd, dt=1.0):
+        self.default_kp = kp
+        self.default_ki = ki
+        self.default_kd = kd
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.dt = dt
+        self.prev_error = 0.0
+        self.integral = 0.0
+    
+    def set_kp(self, kp):
+        self.kp = kp
 
-#     def compute(self, setpoint, current_value, dt):
-#         error = setpoint - current_value
-#         self.integral += error * dt
-#         derivative = (error - self.prev_error) / dt
-#         output = self.kp * error + self.ki * self.integral + self.kd * derivative
-#         self.prev_error = error
-#         return output
+    def set_ki(self, ki):
+        self.ki = ki
+
+    def set_kd(self, kd):
+        self.kd = kd
+    
+    def set_dt(self, dt):
+        self.dt = dt
+    
+    def reset(self):
+        self.kp = self.default_kd
+        self.ki = self.default_ki
+        self.kp = self.default_kp
+        self.prev_error = 0.0
+        self.integral = 0.0
+
+
+    def compute(self, target, current_value):
+        error = current_value - target
+        self.integral += error * self.dt
+        derivative = (error - self.prev_error) / self.dt
+        output = self.kp * error + self.ki * self.integral + self.kd * derivative
+        self.prev_error = error
+        return output
 
 
 
@@ -60,17 +83,9 @@ class WheelControlNode(Node):
         # PID control parameters
         #=========================
         # TODO: use ROS2 parameters for PID parameters
-        self.wall_kp = 1.8
-        self.wall_ki = 0.001
-        self.wall_kd = 7.0
-        self.wall_last_error = 0.0
-        self.wall_integral = 0.0
-        
-        self.parallel_kp = 0.8
-        self.parallel_ki = 0.001
-        self.parallel_kd = 7.0
-        self.parallel_last_error = 0.0
-        self.parallel_integral = 0.0
+        self.side_distance_PID = PIDController(kp=1.2, ki=0.001, kd=7.0)
+        self.parallel_PID = PIDController(kp=0.8, ki=0.001, kd=7.0)
+        self.spin_PID = PIDController(kp=0.8, ki=0.001, kd=7.0)
 
         #=======================
         # Car control threads 
@@ -82,6 +97,15 @@ class WheelControlNode(Node):
         # self.executing_command = False
         self.move_thread = Thread(target=self.move_task)
         # Auto control route #1
+
+        #=======================
+        # Car control parameters
+        #=======================
+        # Spin
+        self.initial_pose = 0.0
+        self.target_pose = 0.0
+        self.start_spin = False
+
         
         # Sensor availble dictionary
         self.sensor_available_dict = {
@@ -180,45 +204,88 @@ class WheelControlNode(Node):
         pass
 
     def along_wall(self, 
-                   right_base_speed:float,
-                   left_base_speed:float,
+                   right_base_speed:float=95,
+                   left_base_speed:float=90,
+                   front_target:float=10.0,
                    target_distance:float=8.0, 
                    backward:float=0.0):
         
-        # adjust distance error
+        # Get sensor data
+        front_distance = self.us_front_sub.get_data()
         right_sidefront_distance = self.us_sidefront_right_sub.get_data()
         right_siderear_distance = self.us_siderear_right_sub.get_data()
-        wall_error = (right_sidefront_distance + right_siderear_distance)/2.0 - target_distance
-        self.wall_integral += wall_error
-        wall_derivative = wall_error - self.wall_last_error
-        wall_output = self.wall_kp * wall_error + self.wall_ki * self.wall_integral + self.wall_kd * wall_derivative
+        
+        # reach end point => stop 
+        if front_distance < front_target:
+            self.m1p1.write(0)
+            self.m1p2.write(0)
+            self.m2p1.write(0)
+            self.m2p2.write(0)
+            return True
+
+        # adjust distance error
+        # Forward: + => away from wall => left +, right -
+        # Backward: + => same as forward
+        side_distance = (right_sidefront_distance + right_siderear_distance)/2.0
+        wall_output = self.side_distance_PID.compute(target_distance, side_distance)
         
         # adjust parallel error
+        # Forward: + => front farther than rear => left +, right -
+        # Backward: + => front farther than rear => left -, right + 
         parallel_error = right_sidefront_distance - right_siderear_distance
-        self.parallel_integral += parallel_error
-        derivative = parallel_error - self.parallel_last_error
-        parallel_output = self.parallel_kd * parallel_error + \
-            self.parallel_ki * self.parallel_integral + \
-                self.parallel_kp * derivative
-        right_speed = min(max(right_base_speed - parallel_output + wall_output, 0), 140)
-        left_speed = min(max(left_base_speed + parallel_output - wall_output, 0), 140)
+        parallel_output = self.parallel_PID.compute(0, parallel_error)
         
+        # Go forward
         if backward == 0.0:
-            self.m1p1.write(right_speed)
+            right_speed = min(max(right_base_speed - parallel_output - wall_output, 0), 140)
+            left_speed = min(max(left_base_speed + parallel_output + wall_output, 0), 140)
+            right_duty_cycle = right_speed / 255.0
+            left_duty_cycle = left_speed / 255.0
+            self.m1p1.write(right_duty_cycle)
             self.m1p2.write(0)
-            self.m2p1.write(left_speed)
+            self.m2p1.write(left_duty_cycle)
             self.m2p2.write(0)
+        # Go backward
         else:
-            self.m1p1.write()
-            self.m1p2.write(right_speed)
-            self.m2p1.write()
-            self.m2p2.write(left_speed)
+            right_speed = min(max(right_base_speed + parallel_output - wall_output, 0), 140)
+            left_speed = min(max(left_base_speed - parallel_output + wall_output, 0), 140)
+            right_duty_cycle = right_speed / 255.0
+            left_duty_cycle = left_speed / 255.0
+            self.m1p1.write(0)
+            self.m1p2.write(right_duty_cycle)
+            self.m2p1.write(0)
+            self.m2p2.write(left_duty_cycle)
+        
+        return False
 
     def straight_approach_target(self, target: float):
         # TODO: move straight to approach front target
         pass
+    
+    def set_initial_pose(self, pose):
+        # TODO: set initial position
+        with self.lock:
+            self.initial_pose = pose
+        pass
 
-    def spin_degree(self, degree: float, clockwise=1):
+    def set_target_pose(self, pose):
+        with self.lock:
+            self.target_pose = pose
+        pass
+
+    def spin_degree(self, degree: float):
+        # degree should be smaller than 180 to avoid ambiguity
+        # if degree > 0 => clockwise
+        current_pose = self.imu_sub.get_data()
+        # set initial pose only at start
+        if not self.start_spin:
+            self.set_initial_pose(current_pose)
+            target_pose = ((self.initial_pose - degree) + 180) % 360 - 180
+            self.set_target_pose(target_pose)
+            self.start_spin = True
+        
+        
+        spin_output = self.spin_PID.compute(, current_degree)
         # TODO: spin a degree
         pass
 
@@ -290,9 +357,7 @@ class WheelControlNode(Node):
                     pass
             self.commands_queue.appendleft([command, args])
     
-    def set_start_pose(self, yaw_angle):
-        # TODO: set initial position
-        pass
+    
 
     def move_callback(self, msg: String):
 
