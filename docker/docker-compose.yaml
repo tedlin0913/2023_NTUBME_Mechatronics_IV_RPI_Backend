@@ -1,5 +1,5 @@
-version: '3'
-
+# version: '3'
+# version from 1.27.0 is optional
 services:
 
   rtsp_server:
@@ -21,8 +21,25 @@ services:
 
     network_mode: host
 
+  dicovery_server_0:
 
-  dicovery_server:
+    image: tedlinlab/ros2:${ARCH}-${ROS_DISTRO_NAME}-prod
+
+    container_name: ros2_discovery_server_0
+
+    command: fastdds discovery --server-id 0 -l 127.0.0.1 -p 11811
+
+    init: true # enable tini
+
+    env_file:
+      - .env
+
+    network_mode: host
+
+    pid: host
+
+
+  dicovery_server_1:
 
     image: tedlinlab/ros2:${ARCH}-${ROS_DISTRO_NAME}-prod
 
@@ -53,10 +70,12 @@ services:
     command: ros2 run wheel_control wheel_control_node --ros-args -p reliability:=best_effort
 
     environment:
-      - ROS_DISCOVERY_SERVER=${SERVER_IP}:11811;127.0.0.1:11888
+      - ROS_DISCOVERY_SERVER=127.0.0.1:11811;127.0.0.1:11888
     
     depends_on:
-      - dicovery_server
+      - dicovery_server_1
+      - ultrasound_sensor
+      - imu_sensor
 
 
   fan_control:
@@ -72,7 +91,11 @@ services:
     command: ros2 run fan_control fan_control_node --ros-args -p reliability:=best_effort
 
     environment:
-      - ROS_DISCOVERY_SERVER=${SERVER_IP}:11811;127.0.0.1:11888
+      - ROS_DISCOVERY_SERVER=127.0.0.1:11811;127.0.0.1:11888
+    
+    depends_on:
+      - dicovery_server_1
+      - ultrasound_sensor
 
 
   ultrasound_sensor:
@@ -88,8 +111,11 @@ services:
     command: ros2 launch bringup ultrasound_launch.py
 
     environment:
-      - ROS_DISCOVERY_SERVER=;127.0.0.1:11888
+      - ROS_DISCOVERY_SERVER=127.0.0.1:11811
 
+    depends_on:
+      - dicovery_server_0
+      
 
   imu_sensor:
 
@@ -104,4 +130,7 @@ services:
     command: ros2 run imu_sensor imu_sensor_node --ros-args -p reliability:=best_effort
 
     environment:
-      - ROS_DISCOVERY_SERVER=;127.0.0.1:11888
+      - ROS_DISCOVERY_SERVER=127.0.0.1:11811
+    
+    depends_on:
+      - dicovery_server_0

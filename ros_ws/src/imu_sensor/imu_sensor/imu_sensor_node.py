@@ -139,7 +139,7 @@ class IMUSensorNode(Node):
                     grav = self.mpu.DMP_get_gravity(quat)
                     
                     rpy = self.mpu.DMP_get_euler_roll_pitch_yaw(quat.get_normalized(), grav)
-                    
+                    # self.get_logger().info(f"X:{rpy.x} Y:{rpy.y} Z:{rpy.z}")
                     # thresholding to remove spikes
                     spike_filter.append(rpy.z)
                     if count > 2:
@@ -183,7 +183,7 @@ class IMUSensorNode(Node):
                             # self.get_logger().info(f"Head: {most_head:.2f} Tail:{most_tail:.2f}")
                             
                             cal_gain = abs(most_head - most_tail) / 850.0
-                            self.get_logger().info(f"Gain: {cal_gain}")
+                            # self.get_logger().info(f"Gain: {cal_gain}")
                     else: 
                         angle_compansate = cal_gain * count
                         rpyz_new = rpy.z + angle_compansate

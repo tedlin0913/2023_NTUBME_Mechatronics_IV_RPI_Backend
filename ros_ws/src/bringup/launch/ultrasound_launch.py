@@ -17,19 +17,33 @@ def generate_launch_description():
         name = 'node_front',
         parameters = [config]
     )
-    node_sidefront=Node(
+    node_sidefront_right=Node(
         package = 'ultrasound_sensor',
         executable = 'ultrasound_sensor_node',
-        name = 'node_sidefront',
+        name = 'node_sidefront_right',
         parameters = [config]
     )
-    node_siderear=Node(
+    node_siderear_right=Node(
         package = 'ultrasound_sensor',
         executable = 'ultrasound_sensor_node',
-        name = 'node_siderear',
+        name = 'node_siderear_right',
+        parameters = [config]
+    )
+    node_sidefront_left=Node(
+        package = 'ultrasound_sensor',
+        executable = 'ultrasound_sensor_node',
+        name = 'node_sidefront_left',
+        parameters = [config]
+    )
+    node_siderear_left=Node(
+        package = 'ultrasound_sensor',
+        executable = 'ultrasound_sensor_node',
+        name = 'node_siderear_left',
         parameters = [config]
     )
     ld.add_action(node_front)
-    ld.add_action(node_sidefront)
-    ld.add_action(node_siderear)
+    ld.add_action(node_sidefront_right)
+    ld.add_action(node_siderear_right)
+    ld.add_action(node_sidefront_left)
+    ld.add_action(node_siderear_left)
     return ld
