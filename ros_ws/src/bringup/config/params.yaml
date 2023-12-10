@@ -1,14 +1,14 @@
 node_front:
   ros__parameters:
-    trig: 23
-    echo: 24
+    trig: 16
+    echo: 20
     topic_name: sensor/us_front
     reliability: best_effort
 
 node_sidefront_right:
   ros__parameters:
-    trig: 17
-    echo: 27
+    trig: 19
+    echo: 26
     topic_name: sensor/us_sidefront_right
     reliability: best_effort
 
