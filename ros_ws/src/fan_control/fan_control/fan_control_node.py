@@ -10,27 +10,27 @@ class FanControlNode(Node):
 
         self.control_subscriber = self.create_subscription(
             String,
-            'control/motor',
-            self.move_callback,
+            'control/fan',
+            self.fan_callback,
             1)
 
-        self.arduino = Arduino('/dev/ttyACM0')
+        PORT = Arduino.AUTODETECT
+        self.board = Arduino(PORT)
 
-        self.TESTPIN = self.arduino.get_pin('d:13:o')
+        self.fan_pin = self.board.get_pin('d:7:o')
 
-        self.get_logger().info("Start driver node")
-        self.get_logger().info("Start driver node")
+        self.get_logger().info("Start fan node")
     
-    def move_callback(self, msg: String):
+    def fan_callback(self, msg: String):
 
         self.get_logger().info(f"msg: {msg.data}")
 
         # TODO: Gradually speed up and down
         # TODO: Move in different directions
-        if msg.data == 'forward':
-            self.TESTPIN.write(True)
+        if msg.data == 'on':
+            self.fan_pin.write(True)
         else:
-            self.TESTPIN.write(False)
+            self.fan_pin.write(False)
 
 
 def main(args=None):
