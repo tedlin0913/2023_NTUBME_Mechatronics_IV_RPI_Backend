@@ -29,18 +29,18 @@ class UltrasoundNode(Node):
             parameters=[
                 ('trig', Parameter.Type.INTEGER),
                 ('echo', Parameter.Type.INTEGER),
-                ('target_distance', Parameter.Type.DOUBLE),
+                # ('target_distance', Parameter.Type.DOUBLE),
                 ('topic_name', Parameter.Type.STRING),
             ]
         )
         self.trig_pin = self.get_parameter('trig').get_parameter_value().integer_value
         self.echo_pin = self.get_parameter('echo').get_parameter_value().integer_value
         self.topic = self.get_parameter('topic_name').get_parameter_value().string_value
-        self.target_distance = self.get_parameter('target_distance').get_parameter_value().double_value
+        # self.target_distance = self.get_parameter('target_distance').get_parameter_value().double_value
 
         self.get_logger().info(f"Trig: {self.trig_pin} Echo: {self.echo_pin}")
         self.get_logger().info(f"Topic: {self.topic}")
-        self.get_logger().info(f"Distance: {self.target_distance}")
+        # self.get_logger().info(f"Distance: {self.target_distance}")
         
         # TODO: should be able to switch between best effort and reliable
         # Use best effort QoS reliability policy
@@ -75,7 +75,7 @@ class UltrasoundNode(Node):
         self.sensor_timer = self.create_timer(0.4, 
                                               self.sensor_callback, 
                                               callback_group=sensor_cbgroup)
-        self.timer = self.create_timer(0.5, 
+        self.timer = self.create_timer(0.8, 
                                        self.sender_callback,
                                        callback_group=sender_cbgroup)
         self.get_logger().info("Start ultrasound node")
@@ -164,7 +164,7 @@ class UltrasoundNode(Node):
     def sender_callback(self):
         if self.buffer:
             distance = self.buffer.pop()
-            # self.get_logger().info(f"Distance: {distance}")
+            self.get_logger().info(f"Distance: {distance}")
             us_data = Float32()
             us_data.data = distance
             
