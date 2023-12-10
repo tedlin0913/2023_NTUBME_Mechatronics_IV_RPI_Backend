@@ -65,10 +65,7 @@ class WheelControlNode(Node):
         self.sensor_qos = qos_profile_sensor_data
         self.service_qos = QoSProfile(
             depth=10,
-            reliability=QoSReliabilityPolicy.RELIABLE)
-
-        self.register_sensors()
-        self.register_moves()     
+            reliability=QoSReliabilityPolicy.RELIABLE)   
         
         #=========================
         # PID control parameters
@@ -118,6 +115,9 @@ class WheelControlNode(Node):
         self.m1p2 = self.board.get_pin('d:6:p')
         self.m2p1 = self.board.get_pin('d:10:p')
         self.m2p2 = self.board.get_pin('d:11:p')
+
+        self.register_sensors()
+        self.register_moves()  
 
         self.get_logger().info("Start driver node")
 
