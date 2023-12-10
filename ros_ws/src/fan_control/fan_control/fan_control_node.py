@@ -18,6 +18,7 @@ class FanControlNode(Node):
         self.board = Arduino(PORT)
 
         self.fan_pin = self.board.get_pin('d:7:o')
+        self.fan_pin.write(False)
 
         self.get_logger().info("Start fan node")
     
