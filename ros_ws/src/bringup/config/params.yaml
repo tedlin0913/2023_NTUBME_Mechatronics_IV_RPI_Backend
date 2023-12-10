@@ -19,16 +19,16 @@ node_siderear_right:
     topic_name: sensor/us_siderear_right
     reliability: best_effort
 
-node_sidefront_left:
-  ros__parameters:
-    trig: 19
-    echo: 26
-    topic_name: sensor/us_sidefront_left
-    reliability: best_effort
+# node_sidefront_left:
+#   ros__parameters:
+#     trig: 19
+#     echo: 26
+#     topic_name: sensor/us_sidefront_left
+#     reliability: best_effort
 
-node_siderear_left:
-  ros__parameters:
-    trig: 16
-    echo: 20
-    topic_name: sensor/us_siderear_left
-    reliability: best_effort
+# node_siderear_left:
+#   ros__parameters:
+#     trig: 16
+#     echo: 20
+#     topic_name: sensor/us_siderear_left
+#     reliability: best_effort
