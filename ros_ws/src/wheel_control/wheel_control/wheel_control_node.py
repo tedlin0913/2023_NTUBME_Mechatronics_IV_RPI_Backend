@@ -98,13 +98,13 @@ class WheelControlNode(Node):
         # Sensor availble dictionary
         self.available_sensor_list = []
         
-        
+        car_control_cbgroup = MutuallyExclusiveCallbackGroup()
         self.car_remote_control_sub = self.create_subscription(
             msg_type=String,
             topic='control/motor',
             callback=self.control_car_callback,
-            qos_profile=self.sensor_data_qos_profile,
-            callback_group=self.car_control_cbgroup)
+            qos_profile=self.sensor_qos,
+            callback_group=car_control_cbgroup)
 
         # Setup Arduino board
         PORT = Arduino.AUTODETECT
@@ -253,7 +253,6 @@ class WheelControlNode(Node):
                                 left_base_speed:float=90,
                                 front_target: float=15):
         try:
-            # TODO: move straight to approach front target
             front_distance = self.us_front_sub.get_data()
             # reach end point => stop 
             if front_distance <= front_target:
@@ -448,6 +447,7 @@ class WheelControlNode(Node):
             if not sensors_ready:
                 sensors_ready = self.all_senosr_ready()
                 continue
+            
             if is_idle:
                 if len(self.commands_queue) == 0:
                     self.commands_queue.appendleft(["stop", []])

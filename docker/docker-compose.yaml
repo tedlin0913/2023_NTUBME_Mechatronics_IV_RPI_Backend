@@ -74,8 +74,6 @@ services:
     
     depends_on:
       - dicovery_server_1
-      - ultrasound_sensor
-      - imu_sensor
 
 
   fan_control:
@@ -115,6 +113,7 @@ services:
 
     depends_on:
       - dicovery_server_0
+      - wheel_control
       
 
   imu_sensor:
@@ -134,3 +133,4 @@ services:
     
     depends_on:
       - dicovery_server_0
+      - wheel_control

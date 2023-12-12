@@ -4,6 +4,8 @@ from rclpy.qos import qos_profile_sensor_data
 from rclpy.qos import QoSProfile
 from rclpy.qos import QoSReliabilityPolicy
 from rclpy.executors import MultiThreadedExecutor
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from std_srvs.srv import Trigger
 from std_msgs.msg import Float32
 
 from threading import Thread, Lock, Event
@@ -30,10 +32,15 @@ ENABLE_DEBUG = True
 
 
 class IMUSensorNode(Node):
-    def __init__(self):
+    def __init__(self,
+                 srv_cbgroup, 
+                 sender_cbgroup):
         super().__init__('imu_sensor_node')
 
         custom_qos_profile = qos_profile_sensor_data
+        service_qos = QoSProfile(
+            depth=10,
+            reliability=QoSReliabilityPolicy.RELIABLE)
         self.buffer = deque(maxlen=10)
 
         # self.test = self.get_parameter('test').value
@@ -60,12 +67,21 @@ class IMUSensorNode(Node):
         self.get_logger().info(f"Packet size: {self.packet_size}")
         FIFO_count = self.mpu.get_FIFO_count()
         self.get_logger().info(f"FIFO count: {FIFO_count}")
-
+        self.topic = 'sensor/imu'
         self.imu_data = Float32()
         self.imu_publisher = self.create_publisher(
             Float32, 
-            'sensor/imu', 
-            custom_qos_profile)
+            self.topic, 
+            custom_qos_profile,
+            callback_group=sender_cbgroup)
+        
+        # self.ready_client = self.create_client(Trigger, 
+        #                                         f"{self.topic}_ready",
+        #                                         qos_profile=service_qos,
+        #                                         callback_group=srv_cbgroup)
+        # self.req = Trigger.Request()
+        # self.response_future = self.ready_client.call_async(self.req)
+        
         self.timer = self.create_timer(0.5, self.pub_imu_data)
         self.get_logger().info("Initilize IMU Node")
         self.start_measure()
@@ -213,8 +229,10 @@ class IMUSensorNode(Node):
 def main(args=None):
     rclpy.init(args=args)
     try:
+        srv_cbgroup = MutuallyExclusiveCallbackGroup()
+        sender_cbgroup = MutuallyExclusiveCallbackGroup()
         executor = MultiThreadedExecutor()
-        node = IMUSensorNode()
+        node = IMUSensorNode(srv_cbgroup=srv_cbgroup,sender_cbgroup=sender_cbgroup)
         executor.add_node(node)
         try:
             executor.spin()

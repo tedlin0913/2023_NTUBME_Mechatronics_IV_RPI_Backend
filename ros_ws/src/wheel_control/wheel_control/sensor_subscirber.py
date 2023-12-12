@@ -19,6 +19,7 @@ class SensorSubscriber:
         self.name = sensor_name
         self.node = node
         self.callback_group = MutuallyExclusiveCallbackGroup()
+        # self.srv_cbgroup = MutuallyExclusiveCallbackGroup()
         
         self.sub = self.node.create_subscription(
             msg_type=Float32,
@@ -27,18 +28,19 @@ class SensorSubscriber:
             qos_profile=data_qos,
             callback_group=self.callback_group
         )
-        self.ready_service = self.node.create_service(
-            Trigger, 
-            f"{topic}_ready", 
-            self.ready_callback,
-            qos_profile=srv_qos,
-            callback_group=self.callback_group
-        )
+        # self.ready_service = self.node.create_service(
+        #     Trigger, 
+        #     f"{topic}_ready", 
+        #     self.ready_callback,
+        #     qos_profile=srv_qos,
+        #     callback_group=self.srv_cbgroup
+        # )
         
     
     def get_data(self):
         if self.is_ready:
             if len(self.sensor_data) > 0:
+                self.is_ready = True
                 return self.sensor_data.pop()
             else: 
                 return None
@@ -48,10 +50,10 @@ class SensorSubscriber:
     def status(self):
         return self.is_ready
          
-    def ready_callback(self):
-        self.node.get_logger().info(f"{self.name} is ready!")
-        self.is_ready = True
-        return Trigger.Response(success=True)
+    # def ready_callback(self):
+    #     self.node.get_logger().info(f"{self.name} is ready!")
+    #     self.is_ready = True
+    #     return Trigger.Response(success=True)
 
 
     def data_callback(self, msg: Float32):
