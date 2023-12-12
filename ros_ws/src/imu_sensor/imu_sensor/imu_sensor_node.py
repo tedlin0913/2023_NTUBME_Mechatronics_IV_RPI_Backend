@@ -66,7 +66,7 @@ class IMUSensorNode(Node):
             Float32, 
             'sensor/imu', 
             custom_qos_profile)
-        self.timer = self.create_timer(0.1, self.pub_imu_data)
+        self.timer = self.create_timer(0.5, self.pub_imu_data)
         self.get_logger().info("Initilize IMU Node")
         self.start_measure()
 
@@ -101,7 +101,7 @@ class IMUSensorNode(Node):
     
         
     def calc_angle_task(self) -> None:
-        self.get_logger().info(f"Wait 20s to stabilize.")
+        self.get_logger().info(f"Wait 30s to stabilize.")
         time.sleep(30)
         self.get_logger().info(f"Finish stabilize.")
         FIFO_buffer = [0]*64
@@ -139,7 +139,7 @@ class IMUSensorNode(Node):
                     grav = self.mpu.DMP_get_gravity(quat)
                     
                     rpy = self.mpu.DMP_get_euler_roll_pitch_yaw(quat.get_normalized(), grav)
-                    # self.get_logger().info(f"X:{rpy.x} Y:{rpy.y} Z:{rpy.z}")
+                    # self.get_logger().info(f"Z:{rpy.z}")
                     # thresholding to remove spikes
                     spike_filter.append(rpy.z)
                     if count > 2:
@@ -182,7 +182,7 @@ class IMUSensorNode(Node):
                             # yaw_offset = avg_tail
                             # self.get_logger().info(f"Head: {most_head:.2f} Tail:{most_tail:.2f}")
                             
-                            cal_gain = abs(most_head - most_tail) / 850.0
+                            cal_gain = abs(most_head - most_tail) / 900.0
                             # self.get_logger().info(f"Gain: {cal_gain}")
                     else: 
                         angle_compansate = cal_gain * count

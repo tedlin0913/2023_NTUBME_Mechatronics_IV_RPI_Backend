@@ -9,11 +9,12 @@ from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from std_msgs.msg import Float32
 
-from pyfirmata2 import Arduino
+# from pyfirmata2 import Arduino
 from threading import Thread, Lock, Event
 from collections import deque
 import time
 import RPi.GPIO as GPIO
+from gpiozero import DistanceSensor
 
 
 class UltrasoundNode(Node):
@@ -48,36 +49,41 @@ class UltrasoundNode(Node):
         
         # PORT =  Arduino.AUTODETECT
         # self.board = Arduino(PORT)
+        self.sensor = DistanceSensor(echo=self.echo_pin, 
+                                     trigger=self.trig_pin,
+                                     max_distance=0.6)
 
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(False)
+        # GPIO.setmode(GPIO.BCM)
+        # GPIO.setwarnings(False)
 
-        self.GPIO_TRIGGER = self.trig_pin
-        self.GPIO_ECHO    = self.echo_pin
+        # self.GPIO_TRIGGER = self.trig_pin
+        # self.GPIO_ECHO    = self.echo_pin
 
-        GPIO.setup(self.GPIO_TRIGGER,GPIO.OUT)  # Trigger
-        GPIO.setup(self.GPIO_ECHO,GPIO.IN)      # Echo
+        # GPIO.setup(self.GPIO_TRIGGER,GPIO.OUT)  # Trigger
+        # GPIO.setup(self.GPIO_ECHO,GPIO.IN)      # Echo
         
-        GPIO.output(self.GPIO_TRIGGER, False)
+        # GPIO.output(self.GPIO_TRIGGER, False)
 
 
-        self.buffer = deque(maxlen=10)
+        self.buffer = deque(maxlen=1)
 
-        # self.lock = Lock()
-        # self.event = Event()
-        # self.measure_thread = Thread(target=self.measure_task)
+        self.lock = Lock()
+        # # self.event = Event()
+        self.measure_thread = Thread(target=self.measure_task)
         
 
         self.us_pub = self.create_publisher(
             Float32,
             self.topic,
             custom_qos_profile)
-        self.sensor_timer = self.create_timer(0.4, 
-                                              self.sensor_callback, 
-                                              callback_group=sensor_cbgroup)
-        self.timer = self.create_timer(0.8, 
+        # self.sensor_timer = self.create_timer(0.4, 
+        #                                       self.sensor_callback, 
+        #                                       callback_group=sensor_cbgroup)
+        
+        self.timer = self.create_timer(1, 
                                        self.sender_callback,
                                        callback_group=sender_cbgroup)
+        self.measure_thread.start()
         self.get_logger().info("Start ultrasound node")
         # self.measure_thread.start()
 
@@ -93,73 +99,80 @@ class UltrasoundNode(Node):
     #     if self.measure_thread.is_alive():
     #         self.event.set()
     #         self.get_logger().info("Stop angle thread")
-
-    def sensor_callback(self):
-
-        pulse_start = 0.0
-        pulse_end = 0.0
-        elapsed = 0.0
-        distance = 0.0
-        time_out_duration = 0.05
-        is_time_out = False
-        get_pulse = False
-        
-        # while True:
-        GPIO.output(self.GPIO_TRIGGER, True)
-        time.sleep(0.00001)
-        GPIO.output(self.GPIO_TRIGGER, False)
-        
-        pulse_start = time.time()
-        pulse_end = time.time()
-        start_time = time.time()
-        while GPIO.input(self.GPIO_ECHO)==0:
-            pulse_start = time.time()
-            if time.time() - start_time > time_out_duration:
-                is_time_out = True
-                break
-            # self.get_logger().info(f"+++++")
-        if not is_time_out:
-            start_time = time.time()
-            while GPIO.input(self.GPIO_ECHO)==1:
-                pulse_end  = time.time()
-                get_pulse = True
-                if time.time() - start_time > time_out_duration:
-                    is_time_out = True
-                    break
-            # self.get_logger().info(f"=====")
-        # # pulse_end = time.time()
-        # while time.time() - start_time < time_out:
-        #     if GPIO.input(self.GPIO_ECHO)==0:
-        #         pulse_start = time.time()
-        #         break
-        
-        # start_time = time.time()
-        # while time.time() - start_time < time_out:
-        #     if GPIO.input(self.GPIO_ECHO)==1:
-        #         pulse_end = time.time()
-        #         get_pulse = True
-        #         break
-        if get_pulse:
-            elapsed = pulse_end - pulse_start
-
-            # That was the distance there and back so halve the value
-            distance =  elapsed * 34300 / 2.0
-            # self.get_logger().info(f"Distance: {distance:.2f}")
+    def measure_task(self):
+        while True:
+            distance = self.sensor.distance * 100
             self.buffer.append(distance)
-        # if get_pulse:
-        #     # Calculate pulse length
-        #     elapsed = pulse_end - pulse_start
+            time.sleep(0.1)
 
-        #     # That was the distance there and back so halve the value
-        #     distance =  elapsed * 34300 / 2.0
-        #     self.get_logger().info(f"Distance: {distance:.2f}")
-        #     self.buffer.append(distance)
         
-        # time.sleep(0.5)
+
+    # def sensor_callback(self):
+
+    #     pulse_start = 0.0
+    #     pulse_end = 0.0
+    #     elapsed = 0.0
+    #     distance = 0.0
+    #     time_out_duration = 0.05
+    #     is_time_out = False
+    #     get_pulse = False
+        
+    #     # while True:
+    #     GPIO.output(self.GPIO_TRIGGER, True)
+    #     time.sleep(0.00001)
+    #     GPIO.output(self.GPIO_TRIGGER, False)
+        
+    #     pulse_start = time.time()
+    #     pulse_end = time.time()
+    #     start_time = time.time()
+    #     while GPIO.input(self.GPIO_ECHO)==0:
+    #         pulse_start = time.time()
+    #         if time.time() - start_time > time_out_duration:
+    #             is_time_out = True
+    #             break
+    #         # self.get_logger().info(f"+++++")
+    #     if not is_time_out:
+    #         start_time = time.time()
+    #         while GPIO.input(self.GPIO_ECHO)==1:
+    #             pulse_end  = time.time()
+    #             get_pulse = True
+    #             if time.time() - start_time > time_out_duration:
+    #                 is_time_out = True
+    #                 break
+    #         # self.get_logger().info(f"=====")
+    #     # # pulse_end = time.time()
+    #     # while time.time() - start_time < time_out:
+    #     #     if GPIO.input(self.GPIO_ECHO)==0:
+    #     #         pulse_start = time.time()
+    #     #         break
+        
+    #     # start_time = time.time()
+    #     # while time.time() - start_time < time_out:
+    #     #     if GPIO.input(self.GPIO_ECHO)==1:
+    #     #         pulse_end = time.time()
+    #     #         get_pulse = True
+    #     #         break
+    #     if get_pulse:
+    #         elapsed = pulse_end - pulse_start
+
+    #         # That was the distance there and back so halve the value
+    #         distance =  elapsed * 34300 / 2.0
+    #         # self.get_logger().info(f"Distance: {distance:.2f}")
+    #         self.buffer.append(distance)
+    #     # if get_pulse:
+    #     #     # Calculate pulse length
+    #     #     elapsed = pulse_end - pulse_start
+
+    #     #     # That was the distance there and back so halve the value
+    #     #     distance =  elapsed * 34300 / 2.0
+    #     #     self.get_logger().info(f"Distance: {distance:.2f}")
+    #     #     self.buffer.append(distance)
+        
+    #     # time.sleep(0.5)
     
-    # def echo_callback(self):
+    # # def echo_callback(self):
         
-    #     pass
+    # #     pass
 
     def sender_callback(self):
         if self.buffer:
