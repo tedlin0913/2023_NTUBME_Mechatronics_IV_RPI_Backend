@@ -17,7 +17,7 @@ import math
 from .sensor_subscirber import SensorSubscriber
 
 class PIDController:
-    def __init__(self, kp, ki, kd, dt=1.0):
+    def __init__(self, kp, ki, kd, dt=0.01):
         self.kp = kp
         self.ki = ki
         self.kd = kd
@@ -71,8 +71,9 @@ class WheelControlNode(Node):
         # PID control parameters
         #=========================
         # TODO: use ROS2 parameters for PID parameters
-        self.side_distance_PID = PIDController(kp=1.2, ki=0.001, kd=7.0)
-        self.parallel_PID = PIDController(kp=0.8, ki=0.001, kd=7.0)
+        self.side_distance_PID = PIDController(kp=0.7, ki=0.001, kd=7.0)
+        self.parallel_PID = PIDController(kp=0.9, ki=0.001, kd=7.0)
+        self.front_PID = PIDController(kp=0.9, ki=0.001, kd=7.0)
         self.spin_PID = PIDController(kp=0.8, ki=0.001, kd=7.0)
 
         #=======================
@@ -113,12 +114,13 @@ class WheelControlNode(Node):
         # Setup DC motor PWM pin
         self.m1p1= self.board.get_pin('d:5:p')
         self.m1p2 = self.board.get_pin('d:6:p')
-        self.m2p1 = self.board.get_pin('d:10:p')
-        self.m2p2 = self.board.get_pin('d:11:p')
+        self.m2p1 = self.board.get_pin('d:9:p')
+        self.m2p2 = self.board.get_pin('d:10:p')
 
         self.register_sensors()
         self.register_moves()  
 
+        self.move_thread.start()
         self.get_logger().info("Start driver node")
 
     def register_sensors(self):
@@ -198,7 +200,11 @@ class WheelControlNode(Node):
             front_distance = self.us_front_sub.get_data()
             right_sidefront_distance = self.us_sidefront_right_sub.get_data()
             right_siderear_distance = self.us_siderear_right_sub.get_data()
+            if (front_distance is None) or (right_sidefront_distance is None) or (right_siderear_distance is None):
+                self.get_logger().info(f"Data is None: {front_distance}, {right_sidefront_distance}, {right_siderear_distance}") 
+                return False
             
+            # self.get_logger().info(f"Front distance: {front_distance}")
             # reach end point => stop 
             if front_distance <= front_target:
                 self.m1p1.write(0)
@@ -212,7 +218,7 @@ class WheelControlNode(Node):
             # adjust distance error
             # Forward: + => away from wall => left +, right -
             # Backward: + => same as forward
-            side_distance = (right_sidefront_distance + right_siderear_distance)/2.0
+            side_distance = (right_sidefront_distance + right_siderear_distance) / 2.0
             wall_output = self.side_distance_PID.compute(target_distance, side_distance)
             
             # adjust parallel error
@@ -221,46 +227,46 @@ class WheelControlNode(Node):
             parallel_error = right_sidefront_distance - right_siderear_distance
             parallel_output = self.parallel_PID.compute(0, parallel_error)
             
+            self.get_logger().info(f"P: {parallel_output}, W: {wall_output}")
             # Go forward
             if backward == 0.0:
-                right_speed = min(max(right_base_speed - parallel_output - wall_output, 0), 140)
-                left_speed = min(max(left_base_speed + parallel_output + wall_output, 0), 140)
-                right_duty_cycle = right_speed / 255.0
-                left_duty_cycle = left_speed / 255.0
+                self.get_logger().info(f"Go forward")
+                right_speed = min(max(right_base_speed - parallel_output - wall_output, right_base_speed), 140)
+                left_speed = min(max(left_base_speed + parallel_output + wall_output, left_base_speed), 140)
+                self.get_logger().info(f"R: {right_speed}, L:{left_speed}")
+                right_duty_cycle = float(right_speed) / 255.0
+                left_duty_cycle = float(left_speed) / 255.0
                 self.m1p1.write(right_duty_cycle)
                 self.m1p2.write(0)
                 self.m2p1.write(left_duty_cycle)
                 self.m2p2.write(0)
             # Go backward
             else:
-                right_speed = min(max(right_base_speed + parallel_output - wall_output, 0), 140)
-                left_speed = min(max(left_base_speed - parallel_output + wall_output, 0), 140)
-                right_duty_cycle = right_speed / 255.0
-                left_duty_cycle = left_speed / 255.0
+                right_speed = min(max(right_base_speed + parallel_output - wall_output, 0), right_base_speed)
+                left_speed = min(max(left_base_speed - parallel_output + wall_output, 0), left_base_speed)
+                right_duty_cycle = float(right_speed) / 255.0
+                left_duty_cycle = float(left_speed) / 255.0
                 self.m1p1.write(0)
                 self.m1p2.write(right_duty_cycle)
                 self.m2p1.write(0)
                 self.m2p2.write(left_duty_cycle)
             return False
         except Exception as e:
-            self.get_logger().warning(f"Error:{e}")
+            self.get_logger().warning(f"[Along Wall] Error:{e}")
             return True
         # end try
         
             
     def straight_approach_target(self, 
-                                right_base_speed:float=95,
-                                left_base_speed:float=90,
-                                front_target: float=15):
+                                right_base_speed:float=110,
+                                left_base_speed:float=110,
+                                side_target_distance:float=15,
+                                front_target: float=20,
+                                front_target_error:float=1):
         try:
             front_distance = self.us_front_sub.get_data()
-            # reach end point => stop 
-            if front_distance <= front_target:
-                self.m1p1.write(0)
-                self.m1p2.write(0)
-                self.m2p1.write(0)
-                self.m2p2.write(0)
-                return True
+            right_sidefront_distance = self.us_sidefront_right_sub.get_data()
+            right_siderear_distance = self.us_siderear_right_sub.get_data()
 
             current_pose = self.imu_sub.get_data()
             current_pose = (current_pose + 360) % 360
@@ -270,17 +276,59 @@ class WheelControlNode(Node):
                 with self.lock:
                     self.start_spin = True
             else:
-                pose_diff = (self.target_pose - current_pose) % 360
+                pose_diff = (self.target_pose - current_pose + 360) % 360
                 # normalize angle to 180 -> -180
                 pose_diff = (pose_diff + 180) % 360 - 180
                 spin_output = self.spin_PID.compute(0, abs(pose_diff))
                 # TODO: test and check actual spinning direction???
                 if pose_diff >= 0:
-                    right_speed = min(max(right_base_speed - spin_output, 0), 140)
-                    left_speed = min(max(left_base_speed + spin_output, 0), 140)
+                    right_speed = right_base_speed
+                    left_speed = min(max(left_base_speed - spin_output, 90.0), 140.0)
                 else:
-                    right_speed = min(max(right_base_speed + spin_output, 0), 140)
-                    left_speed = min(max(left_base_speed - spin_output, 0), 140)
+                    right_speed = right_base_speed
+                    left_speed = min(max(left_base_speed + spin_output, 90.0), 140.0)
+                
+                # adjust distance error
+                # Forward: + => away from wall => left +, right -
+                # Backward: + => same as forward
+                
+                if not (right_sidefront_distance == 60.0 or right_siderear_distance == 60.0):
+                    side_distance = (right_sidefront_distance + right_siderear_distance) / 2.0
+                    dist_diff = side_distance - side_target_distance
+                    wall_output = self.side_distance_PID.compute(0, abs(dist_diff))
+                    if dist_diff > 0:
+                        left_speed = min(max(left_speed + wall_output, 90.0), 140.0)
+                    elif dist_diff < 0:
+                        left_speed = min(max(left_speed - wall_output, 90.0), 140.0)
+                
+                if not (front_distance == 60.0):
+                    front_diff = front_distance - front_target
+                    front_output = self.front_PID.compute(0, abs(front_diff))
+                    front_output = 40.0 / float(front_output)
+                    right_speed = min(max(right_speed - front_output, 80.0), 140.0)
+                    left_speed = min(max(left_speed - front_output, 80.0), 140.0)
+                    right_duty_cycle = right_speed / 255.0
+                    left_duty_cycle = left_speed / 255.0
+                    if front_diff > front_target_error:
+                        self.m1p1.write(right_duty_cycle)
+                        self.m1p2.write(0)
+                        self.m2p1.write(left_duty_cycle)
+                        self.m2p2.write(0)
+                    elif front_diff < -front_target_error:
+                        self.m1p1.write(0)
+                        self.m1p2.write(right_duty_cycle)
+                        self.m2p1.write(0)
+                        self.m2p2.write(left_duty_cycle)
+                    else:
+                        self.m1p1.write(0)
+                        self.m1p2.write(0)
+                        self.m2p1.write(0)
+                        self.m2p2.write(0)
+                        self.spin_PID.reset()
+                        self.front_PID.reset()
+                        self.side_distance_PID.reset()
+                        return True
+
                 right_duty_cycle = right_speed / 255.0
                 left_duty_cycle = left_speed / 255.0
                 self.m1p1.write(right_duty_cycle)
@@ -318,7 +366,7 @@ class WheelControlNode(Node):
             # set initial pose only at start
             if not self.start_spin:
                 self.set_initial_pose(current_pose)
-                target_pose = (self.initial_pose + degree) % 360
+                target_pose = (self.initial_pose + degree + 360) % 360
                 self.set_target_pose(target_pose)
                 with self.lock:
                     self.start_spin = True
@@ -356,32 +404,62 @@ class WheelControlNode(Node):
         # end try
         
 
-    def align_wall(self, adjustment_speed:float=110, error:float=0.01):
+    def align_wall(self, adjustment_speed:float=110, error:float=0.1):
         # TODO: adjust to align wall
         try:
+            # degree should be smaller than 180 to avoid ambiguity
+            # if degree > 0 => clockwise
+            # start_pose = self.imu_sub.get_data()
+            # start_pose = (start_pose + 360) % 360
+            
             right_sidefront_distance = self.us_sidefront_right_sub.get_data()
             right_siderear_distance = self.us_siderear_right_sub.get_data()
-            duty_cycle = adjustment_speed / 255.0
+            
+            diff = right_sidefront_distance - right_siderear_distance
+            output = self.parallel_PID.compute(error, abs(diff))
+            new_speed = min(max(adjustment_speed - output, 90), 110.0)
+            if (right_sidefront_distance == 60.0 or right_siderear_distance == 60.0):
+                new_speed = 110
+            duty_cycle = float(new_speed) / 255.0
+            self.get_logger().info(f"DC: {duty_cycle}")
             # TODO: test and see if correct
-            if right_sidefront_distance - right_siderear_distance > error:
-                self.m1p1.write(0)
-                self.m1p2.write(duty_cycle)
-                self.m2p1.write(duty_cycle)
-                self.m2p2.write(0)
-            elif right_sidefront_distance - right_siderear_distance < -error:
+            if diff < -error or \
+                right_sidefront_distance == 60.0 or \
+                    right_siderear_distance == 60.0:
                 self.m1p1.write(duty_cycle)
                 self.m1p2.write(0)
                 self.m2p1.write(0)
-                self.m2p2.write(duty_cycle)
+                self.m2p2.write(0)
+            elif diff > error:
+                self.m1p1.write(0)
+                self.m1p2.write(duty_cycle)
+                self.m2p1.write(0)
+                self.m2p2.write(0)
             else:
+                self.get_logger().info(f"Debug distance:{right_sidefront_distance},{right_siderear_distance}")
                 self.m1p1.write(0)
                 self.m1p2.write(0)
                 self.m2p1.write(0)
                 self.m2p2.write(0)
                 return True
+            time.sleep(0.3)
+            self.m1p1.write(0)
+            self.m1p2.write(0)
+            self.m2p1.write(0)
+            self.m2p2.write(0)
+            time.sleep(0.5)
+            # # adjust back if go too far
+            # end_pose = self.imu_sub.get_data()
+            # end_pose = (end_pose + 360) % 360
+            # degree_diff = (end_pose - start_pose + 360) % 360
+            # if degree_diff > 180:
+            #     degree_diff = degree_diff - 360
+            # if degree_diff > 30:
+
+            
             return False 
         except Exception as e:
-            self.get_logger().warning(f"Error:{e}")
+            self.get_logger().warning(f"[Align Wall] Error:{e}")
             return True
         # end try
         
@@ -413,24 +491,34 @@ class WheelControlNode(Node):
         # message is send back to the remote control device to notify the user.
         
         commands_string = msg.data
-        commands = commands_string.split(',')
+        self.add_commands(commands_string)
+        
+    
+    def add_commands(self, commands_string:str):
         # clean all old commands
         self.commands_queue.clear()
+        commands = commands_string.split(',')
+        self.get_logger().info(f"Commands: {commands}")
         for element in commands:
             # Split each element by colons
             parts = element.split(':')
+
             # Extract the key
             command = parts[0]
-            args = []
-            for arg in parts[1].split(';'):
+            args = parts[1].split(';')
+            self.get_logger().info(f"Args: {args}")
+            float_args = []
+            for arg in args:
+                
                 try:
                     arg = float(arg)
-                    args.append(arg)
+                    float_args.append(arg)
                 except ValueError:
                     pass
-            self.commands_queue.appendleft([command, args])
+            self.commands_queue.appendleft([command, float_args])
+        pass
     
-    def all_senosr_ready(self):
+    def all_sensor_ready(self):
         ready_list = []
         for sensor in self.available_sensor_list:
             ready_list.append(sensor.status())
@@ -442,11 +530,18 @@ class WheelControlNode(Node):
         current_command = "stop"
         command_args = []
         sensors_ready = False
+        # dummy test comands
+        # along_wall:95;95;15;15;0,
+        self.add_commands("align_wall:110;1,straight_approach_target:110;110;15;20;1")
+        time.sleep(1)
         
         while not self.break_now_flag:
             if not sensors_ready:
-                sensors_ready = self.all_senosr_ready()
+                sensors_ready = self.all_sensor_ready()
+                # self.get_logger().warning(f"Sensor not ready")
                 continue
+            # else: 
+
             
             if is_idle:
                 if len(self.commands_queue) == 0:
@@ -456,13 +551,22 @@ class WheelControlNode(Node):
                     command = self.commands_queue.pop()
                     current_command = command[0]
                     command_args = command[1]
+                    self.get_logger().info(f"#### Start Command: {current_command} ####")
                     # stop idle state
                     is_idle = False
             else:
                 command_function = self.command_dispatcher.get(current_command)
                 is_finished = command_function(*command_args)
                 if is_finished:
+                    self.get_logger().info(f"#### Command Finished!! ####")
                     is_idle = True
+                    time.sleep(0.5)
+        # time.sleep(0.5)
+        # # Stop the motors!
+        # self.m1p1.write(0)
+        # self.m1p2.write(0)
+        # self.m2p1.write(0)
+        # self.m2p2.write(0)
     
 
 def main(args=None):
