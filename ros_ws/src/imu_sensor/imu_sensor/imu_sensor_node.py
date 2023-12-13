@@ -82,7 +82,7 @@ class IMUSensorNode(Node):
         # self.req = Trigger.Request()
         # self.response_future = self.ready_client.call_async(self.req)
         
-        self.timer = self.create_timer(0.5, self.pub_imu_data)
+        self.timer = self.create_timer(0.05, self.pub_imu_data)
         self.get_logger().info("Initilize IMU Node")
         self.start_measure()
 

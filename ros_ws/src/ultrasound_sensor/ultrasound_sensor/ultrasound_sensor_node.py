@@ -67,7 +67,7 @@ class UltrasoundNode(Node):
             custom_qos_profile,
             callback_group=sender_cbgroup)
         
-        self.timer = self.create_timer(0.5, 
+        self.timer = self.create_timer(0.1, 
                                        self.sender_callback)
         # self.ready_client = self.create_client(Trigger, 
         #                                         f"{self.topic}_ready",
@@ -81,12 +81,12 @@ class UltrasoundNode(Node):
         while True:
             distance = self.sensor.distance * 100
             self.buffer.append(distance)
-            time.sleep(0.1)
+            time.sleep(0.01)
 
     def sender_callback(self):
         if self.buffer:
             distance = self.buffer.pop()
-            self.get_logger().info(f"Distance: {distance}")
+            # self.get_logger().info(f"Distance: {distance}")
             us_data = Float32()
             us_data.data = distance
             
