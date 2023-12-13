@@ -18,6 +18,7 @@ class SensorSubscriber:
         self.sensor_data = deque(maxlen=3)
         self.name = sensor_name
         self.node = node
+        self.prev_data = 0.0
         self.callback_group = MutuallyExclusiveCallbackGroup()
         # self.srv_cbgroup = MutuallyExclusiveCallbackGroup()
         
@@ -40,10 +41,10 @@ class SensorSubscriber:
     def get_data(self):
         if self.is_ready:
             if len(self.sensor_data) > 0:
-                self.is_ready = True
-                return self.sensor_data.pop()
+                self.prev_data = self.sensor_data.pop()      
+                return self.prev_data
             else: 
-                return None
+                return self.prev_data
         else: 
             return None
     
@@ -57,7 +58,11 @@ class SensorSubscriber:
 
 
     def data_callback(self, msg: Float32):
+        if not self.is_ready:
+            self.is_ready = True
+            self.node.get_logger().info(f"{self.name} is ready!")
         sensor_data = msg.data
+        # self.node.get_logger().info(f"[{self.name}] Data: {sensor_data}")
         self.sensor_data.append(sensor_data)
         pass
 
