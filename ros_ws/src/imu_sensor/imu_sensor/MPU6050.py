@@ -21,6 +21,7 @@ class MPU6050:
         self.__dev_id = a_address
         # Connect to num 1 SMBus
         self.__bus = smbus2.SMBus(a_bus)
+        time.sleep(1)
         # Set clock source to gyro
         self.set_clock_source(C.MPU6050_CLOCK_PLL_XGYRO)
         # Set accelerometer range
@@ -430,7 +431,7 @@ class MPU6050:
 
                 if self.__debug:
                     print('Setting DLPF bandwidth to 42Hz')
-                self.set_DLF_mode(C.MPU6050_DLPF_BW_42)
+                self.set_DLF_mode(C.MPU6050_DLPF_BW_5)
 
                 if self.__debug:
                     print('Setting gyro sensitivity to +/- 2000 deg/sec')

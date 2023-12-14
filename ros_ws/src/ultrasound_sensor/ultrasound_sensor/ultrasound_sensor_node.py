@@ -53,7 +53,7 @@ class UltrasoundNode(Node):
         
         self.sensor = DistanceSensor(echo=self.echo_pin, 
                                      trigger=self.trig_pin,
-                                     max_distance=0.6)
+                                     max_distance=0.8)
 
 
         self.buffer = deque(maxlen=3)
@@ -81,7 +81,7 @@ class UltrasoundNode(Node):
         while True:
             distance = self.sensor.distance * 100
             self.buffer.append(distance)
-            time.sleep(0.01)
+            time.sleep(0.03)
 
     def sender_callback(self):
         if self.buffer:

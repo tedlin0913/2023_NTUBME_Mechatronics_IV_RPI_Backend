@@ -9,10 +9,11 @@ services:
     container_name: rtsp_server
 
     volumes:
-      - ../rtsp/mediamtx.yaml:/mediamtx.yaml
+      - ../rtsp/mediamtx.yml:/mediamtx.yml
 
-    devices:
-      - /dev/video0:/dev/video0
+    # devices:
+    #   - /dev/video1:/dev/video1
+    privileged: true
 
     env_file:
       - .env
@@ -93,7 +94,7 @@ services:
     
     depends_on:
       - dicovery_server_1
-      - ultrasound_sensor
+      # - ultrasound_sensor
 
 
   ultrasound_sensor:
@@ -113,7 +114,7 @@ services:
 
     depends_on:
       - dicovery_server_0
-      - wheel_control
+      # - wheel_control
       
 
   imu_sensor:
@@ -133,4 +134,4 @@ services:
     
     depends_on:
       - dicovery_server_0
-      - wheel_control
+      # - wheel_control

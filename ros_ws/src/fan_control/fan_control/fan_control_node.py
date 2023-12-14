@@ -18,7 +18,7 @@ class FanControlNode(Node):
         self.board = Arduino(PORT)
 
         self.fan_pin = self.board.get_pin('d:7:o')
-        self.fan_pin.write(False)
+        self.fan_pin.write(True)
 
         self.get_logger().info("Start fan node")
     
@@ -26,12 +26,12 @@ class FanControlNode(Node):
 
         self.get_logger().info(f"msg: {msg.data}")
 
-        # TODO: Gradually speed up and down
-        # TODO: Move in different directions
-        if msg.data == 'on':
-            self.fan_pin.write(True)
-        else:
-            self.fan_pin.write(False)
+        # # TODO: Gradually speed up and down
+        # # TODO: Move in different directions
+        # if msg.data == 'on':
+        #     self.fan_pin.write(True)
+        # else:
+        #     self.fan_pin.write(False)
 
 
 def main(args=None):

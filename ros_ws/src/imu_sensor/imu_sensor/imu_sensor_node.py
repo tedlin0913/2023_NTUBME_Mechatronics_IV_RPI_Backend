@@ -18,7 +18,7 @@ import numpy as np
 
 from .MPU6050 import MPU6050
 
-I2C_BUS = 1
+I2C_BUS = 0
 DEVICE_ADDRESS = 0x68
 # The offsets are different for each device and should be changed
 # accordingly using a calibration procedure
@@ -58,8 +58,21 @@ class IMUSensorNode(Node):
                       Y_GYR_OFFSET, 
                       Z_GYR_OFFSET,
                       ENABLE_DEBUG)
+        # self.mpu.reset_DMP()
+        # self.mpu.reset_FIFO()
+        dmp_ready = 1
+        while not (dmp_ready == 0):
+            try:
+                ret = self.mpu.dmp_initialize()
+                dmp_ready = ret
+            except Exception as e:
+                self.get_logger().warning(f"Error: {e} try again!")
+                continue
+                # raise e
+            # end try
         
-        self.mpu.dmp_initialize()
+        # wait for dmp initilization
+        # time.sleep(2)
         self.mpu.set_DMP_enabled(True)
         mpu_int_status = self.mpu.get_int_status()
         self.get_logger().info(f"MPU Status: {hex(mpu_int_status)}")
@@ -117,8 +130,8 @@ class IMUSensorNode(Node):
     
         
     def calc_angle_task(self) -> None:
-        self.get_logger().info(f"Wait 30s to stabilize.")
-        time.sleep(30)
+        self.get_logger().info(f"Wait 10s to stabilize.")
+        time.sleep(10)
         self.get_logger().info(f"Finish stabilize.")
         FIFO_buffer = [0]*64
         count = 0
@@ -132,6 +145,7 @@ class IMUSensorNode(Node):
         cal_tail_rpyz = 0.0
         cal_gain = 0.0
         # Start calibration process
+        # self.mpu.reset_FIFO()
         while True: 
             try: 
                 FIFO_count = self.mpu.get_FIFO_count()
@@ -177,36 +191,36 @@ class IMUSensorNode(Node):
                     #         rpy = pre_rpy
                     #         # Have to reset pre_rpy
                     
-                    spike_filter[1]
+                    # spike_filter[1]
                     # Calibration
-                    if count <= 1000: 
-                        if count < 200:
-                            cal_head_array[count] = rpy.z
-                        # if count % 1 == 0:
-                        elif count > 799 and count < 1000:
-                            i = count % 200
-                            cal_tail_array[i] = rpy.z
-                        elif count == 1000:
-                            h_vals, h_counts = np.unique(cal_head_array, return_counts=True)
-                            h_index = np.argmax(h_counts)
-                            most_head = h_vals[h_index]
-                            t_vals, t_counts = np.unique(cal_tail_array, return_counts=True)
-                            t_index = np.argmax(t_counts)
-                            most_tail = t_vals[t_index]
-                            # avg_head = cal_head_rpyz / 100.0
-                            # avg_tail = cal_tail_rpyz / 100.0
-                            # yaw_offset = avg_tail
-                            # self.get_logger().info(f"Head: {most_head:.2f} Tail:{most_tail:.2f}")
+                    # if count <= 1000: 
+                    #     if count < 200:
+                    #         cal_head_array[count] = rpy.z
+                    #     # if count % 1 == 0:
+                    #     elif count > 799 and count < 1000:
+                    #         i = count % 200
+                    #         cal_tail_array[i] = rpy.z
+                    #     elif count == 1000:
+                    #         h_vals, h_counts = np.unique(cal_head_array, return_counts=True)
+                    #         h_index = np.argmax(h_counts)
+                    #         most_head = h_vals[h_index]
+                    #         t_vals, t_counts = np.unique(cal_tail_array, return_counts=True)
+                    #         t_index = np.argmax(t_counts)
+                    #         most_tail = t_vals[t_index]
+                    #         # avg_head = cal_head_rpyz / 100.0
+                    #         # avg_tail = cal_tail_rpyz / 100.0
+                    #         # yaw_offset = avg_tail
+                    #         # self.get_logger().info(f"Head: {most_head:.2f} Tail:{most_tail:.2f}")
                             
-                            cal_gain = abs(most_head - most_tail) / 900.0
-                            # self.get_logger().info(f"Gain: {cal_gain}")
-                    else: 
-                        angle_compansate = cal_gain * count
-                        rpyz_new = rpy.z + angle_compansate
+                    #         cal_gain = abs(most_head - most_tail) / 900.0
+                    #         # self.get_logger().info(f"Gain: {cal_gain}")
+                    # else: 
+                        # angle_compansate = cal_gain * count
+                        # rpyz_new = rpy.z + angle_compansate
                         # rpyz_new = self.normalize_yaw(rpyz_new, yaw_offset)
                         # self.get_logger().info(f"X:{grav.x} Y:{grav.y} Z:{grav.z}")
                         # self.get_logger().info(f"Y:{rpy.z:.2f} YC:{rpyz_new:.2f} C:{angle_compansate:.5f}")
-                        self.buffer.append(rpyz_new)
+                    self.buffer.append(rpy.z)
                     
                     count += 1
                 # time.sleep(0.01)
